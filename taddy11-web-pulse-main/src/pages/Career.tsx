@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
+import axios from 'axios';
 import { Search, MapPin, Clock, Users, Award, Heart, Code, Smartphone, Server, Settings, User, Palette, TestTube, X, Send, CheckCircle, Building, Globe, Zap } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
-// import Footer from '../components/layout/Footer';
-import axios from 'axios'; 
 import { TrendingUp } from 'lucide-react';
+import { Edit, Trash2, Eye } from 'lucide-react';
 
 
 
@@ -209,6 +208,11 @@ const Career: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState('All');
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [showMyApplications, setShowMyApplications] = useState(false);
+  const [myApplications, setMyApplications] = useState<any[]>([]);
+  const [userEmail, setUserEmail] = useState('');
+  const [editingApplication, setEditingApplication] = useState<any>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
   const [applicationData, setApplicationData] = useState({
     name: '',
     email: '',
@@ -222,6 +226,120 @@ const Career: React.FC = () => {
     skills: '',
     expectedSalary:''
   });
+
+  // Fetch user applications
+  const fetchMyApplications = async (email: string) => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/api/applications/user/${email}`);
+      if (response.data.success) {
+        setMyApplications(response.data.applications);
+        setShowMyApplications(true);
+      }
+    } catch (error) {
+      console.error('Error fetching applications:', error);
+      alert('Error fetching applications');
+    }
+  };
+
+  // Handle view my applications
+  const handleViewMyApplications = () => {
+    const email = prompt('Please enter your email to view your applications:');
+    if (email) {
+      setUserEmail(email);
+      fetchMyApplications(email);
+    }
+  };
+
+  // Handle edit application
+  const handleEditApplication = (application: any) => {
+    setEditingApplication(application);
+    setApplicationData({
+      name: application.name,
+      email: application.email,
+      phone: application.phone,
+      linkedIn: application.linkedIn || '',
+      portfolio: application.portfolio || '',
+      experience: application.experience,
+      skills: application.skills,
+      coverLetter: application.coverLetter,
+      availability: application.availability,
+      expectedSalary: application.expectedSalary || '',
+      resume: null
+    });
+    setShowEditForm(true);
+  };
+
+  // Handle update application
+  const handleUpdateApplication = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const formData = new FormData();
+    formData.append('name', applicationData.name);
+    formData.append('email', applicationData.email);
+    formData.append('phone', applicationData.phone);
+    formData.append('linkedIn', applicationData.linkedIn);
+    formData.append('portfolio', applicationData.portfolio);
+    formData.append('experience', applicationData.experience);
+    formData.append('skills', applicationData.skills);
+    formData.append('coverLetter', applicationData.coverLetter);
+    formData.append('preferredRole', editingApplication.preferredRole);
+    formData.append('availability', applicationData.availability);
+    formData.append('expectedSalary', applicationData.expectedSalary);
+    
+    if (applicationData.resume) {
+      formData.append('resume', applicationData.resume);
+    }
+
+    try {
+      const response = await axios.put(`${import.meta.env.VITE_BASE_URL}/api/applications/${editingApplication._id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success) {
+        alert('Application updated successfully!');
+        setShowEditForm(false);
+        setEditingApplication(null);
+        fetchMyApplications(userEmail); // Refresh the list
+        
+        // Reset form
+        setApplicationData({
+          name: '',
+          email: '',
+          phone: '',
+          linkedIn: '',
+          portfolio: '',
+          experience: '',
+          skills: '',
+          coverLetter: '',
+          availability: '',
+          expectedSalary: '',
+          resume: null
+        });
+      }
+    } catch (error) {
+      console.error('Error updating application:', error);
+      alert('Error updating application. Please try again.');
+    }
+  };
+
+  // Handle delete application
+  const handleDeleteApplication = async (applicationId: string) => {
+    if (window.confirm('Are you sure you want to delete this application? This action cannot be undone.')) {
+      try {
+        const response = await axios.delete(`${import.meta.env.VITE_BASE_URL}/api/applications/${applicationId}`);
+        
+        if (response.data.success) {
+          alert('Application deleted successfully!');
+          fetchMyApplications(userEmail); // Refresh the list
+        }
+      } catch (error) {
+        console.error('Error deleting application:', error);
+        alert('Error deleting application. Please try again.');
+      }
+    }
+  };
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -443,6 +561,299 @@ const handleApplicationSubmit = async (e: React.FormEvent) => {
           </div>
         </div>
       </section>
+
+      {/* Your Applications Button */}
+      <section className="py-8 bg-white border-t">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <button
+            onClick={handleViewMyApplications}
+            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold"
+          >
+            <Eye className="w-5 h-5 mr-2 inline" />
+            View Your Applications
+          </button>
+        </div>
+      </section>
+
+      {/* My Applications Modal */}
+      {showMyApplications && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Your Applications ({myApplications.length})
+                </h2>
+                <button
+                  onClick={() => setShowMyApplications(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {myApplications.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">No applications found</h3>
+                  <p className="text-gray-500">You haven't submitted any applications yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {myApplications.map((application) => (
+                    <div key={application._id} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">{application.preferredRole}</h3>
+                          <p className="text-gray-600 mb-2">Applied on: {new Date(application.createdAt).toLocaleDateString()}</p>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            application.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            application.status === 'reviewed' ? 'bg-blue-100 text-blue-800' :
+                            application.status === 'interview' ? 'bg-purple-100 text-purple-800' :
+                            application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                          </span>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditApplication(application)}
+                            className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                            title="Edit Application"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteApplication(application._id)}
+                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                            title="Delete Application"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p><strong>Experience:</strong> {application.experience}</p>
+                          <p><strong>Availability:</strong> {application.availability}</p>
+                        </div>
+                        <div>
+                          <p><strong>Expected Salary:</strong> {application.expectedSalary || 'Not specified'}</p>
+                          <p><strong>Resume:</strong> {application.resumeFileName ? 'Uploaded' : 'Not uploaded'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Application Form Modal */}
+      {showEditForm && editingApplication && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Edit Application - {editingApplication.preferredRole}
+                </h2>
+                <button
+                  onClick={() => setShowEditForm(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateApplication} className="p-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={applicationData.name}
+                    onChange={(e) => setApplicationData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={applicationData.email}
+                    onChange={(e) => setApplicationData(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={applicationData.phone}
+                    onChange={(e) => setApplicationData(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    LinkedIn Profile
+                  </label>
+                  <input
+                    type="url"
+                    value={applicationData.linkedIn}
+                    onChange={(e) => setApplicationData(prev => ({ ...prev, linkedIn: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://linkedin.com/in/yourprofile"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Portfolio URL
+                  </label>
+                  <input
+                    type="url"
+                    value={applicationData.portfolio}
+                    onChange={(e) => setApplicationData(prev => ({ ...prev, portfolio: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://yourportfolio.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Resume (Leave empty to keep current)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Years of Experience *
+                  </label>
+                  <select
+                    required
+                    value={applicationData.experience}
+                    onChange={(e) => setApplicationData(prev => ({ ...prev, experience: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select experience</option>
+                    <option value="0-1">0-1 years</option>
+                    <option value="1-3">1-3 years</option>
+                    <option value="3-5">3-5 years</option>
+                    <option value="5-10">5-10 years</option>
+                    <option value="10+">10+ years</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Expected Salary
+                  </label>
+                  <input
+                    type="text"
+                    value={applicationData.expectedSalary}
+                    onChange={(e) => setApplicationData(prev => ({ ...prev, expectedSalary: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., $80,000 - $100,000"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Skills *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={applicationData.skills}
+                  onChange={(e) => setApplicationData(prev => ({ ...prev, skills: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="List your key skills and technologies..."
+                />
+              </div>
+
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Letter *
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={applicationData.coverLetter}
+                  onChange={(e) => setApplicationData(prev => ({ ...prev, coverLetter: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Tell us why you're interested in this position..."
+                />
+              </div>
+
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Availability *
+                </label>
+                <select
+                  required
+                  value={applicationData.availability}
+                  onChange={(e) => setApplicationData(prev => ({ ...prev, availability: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select availability</option>
+                  <option value="immediate">Immediate</option>
+                  <option value="2-weeks">2 weeks notice</option>
+                  <option value="1-month">1 month</option>
+                  <option value="2-months">2 months</option>
+                  <option value="negotiable">Negotiable</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowEditForm(false)}
+                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Update Application
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Job Listings */}
        {/* Job Listings */}
@@ -827,6 +1238,3 @@ const handleApplicationSubmit = async (e: React.FormEvent) => {
 };
 
 export default Career;
-
-
-
