@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const Application = require('../models/Application');
 
 const router = express.Router();
@@ -109,6 +110,116 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching application',
+      error: error.message
+    });
+  }
+});
+
+// Get applications by email
+router.get('/user/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const applications = await Application.find({ email }).sort({ createdAt: -1 });
+    res.json({
+      success: true,
+      applications
+    });
+  } catch (error) {
+    console.error('Error fetching user applications:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching applications',
+      error: error.message
+    });
+  }
+});
+
+// Update application
+router.put('/:id', upload.single('resume'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = {
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
+      linkedIn: req.body.linkedIn,
+      portfolio: req.body.portfolio,
+      experience: req.body.experience,
+      skills: req.body.skills,
+      coverLetter: req.body.coverLetter,
+      preferredRole: req.body.preferredRole,
+      availability: req.body.availability,
+      expectedSalary: req.body.expectedSalary,
+    };
+
+    // If new resume is uploaded, update the filename and delete old file
+    if (req.file) {
+      const oldApplication = await Application.findById(id);
+      if (oldApplication && oldApplication.resumeFileName) {
+        const oldFilePath = path.join('uploads/resumes/', oldApplication.resumeFileName);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      updateData.resumeFileName = req.file.filename;
+    }
+
+    const application = await Application.findByIdAndUpdate(id, updateData, { new: true });
+    
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Application updated successfully',
+      application
+    });
+  } catch (error) {
+    console.error('Error updating application:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating application',
+      error: error.message
+    });
+  }
+});
+
+// Delete application
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const application = await Application.findById(id);
+    
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found'
+      });
+    }
+
+    // Delete resume file if exists
+    if (application.resumeFileName) {
+      const filePath = path.join('uploads/resumes/', application.resumeFileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    await Application.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      message: 'Application deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting application:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting application',
       error: error.message
     });
   }

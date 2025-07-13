@@ -63,6 +63,7 @@ const path = require('path');
 require('dotenv').config();
 
 const applicationRoutes = require('./routes/applications');
+const contactRoutes = require('./routes/contact');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -93,7 +94,9 @@ console.log('📂 Serving static files from /uploads');
 
 // Routes
 app.use('/api/applications', applicationRoutes);
+app.use('/api/contact', contactRoutes);
 console.log('📦 Application routes mounted at /api/applications');
+console.log('📦 Contact routes mounted at /api/contact');
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

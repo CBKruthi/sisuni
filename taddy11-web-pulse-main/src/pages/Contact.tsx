@@ -1,4 +1,5 @@
 import { useState } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,20 +28,41 @@ const Contact = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // For now, we'll just show a success message
-    // In a real implementation, this would connect to your backend
-    toast({
-      title: "Message Sent!",
-      description: "Thank you for reaching out. We'll get back to you within 24 hours.",
-    });
-    
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      subject: "",
-      message: ""
-    });
+    handleSubmitToBackend();
+  };
+
+  const handleSubmitToBackend = async () => {
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/api/contact`, formData);
+      
+      if (response.data.success) {
+        toast({
+          title: "Message Sent!",
+          description: "Thank you for reaching out. We'll get back to you within 24 hours.",
+        });
+        
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          subject: "",
+          message: ""
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to send message. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -204,9 +226,8 @@ const Contact = () => {
 
                   <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm text-muted-foreground">
-                      <strong>Note:</strong> This is a demo contact form. To enable actual email 
-                      functionality, you'll need to connect to a backend service like Supabase 
-                      using the green button in the top-right corner of Lovable.
+                      <strong>Note:</strong> Your message will be sent directly to our team and 
+                      we'll respond within 24 hours.
                     </p>
                   </div>
                 </CardContent>
