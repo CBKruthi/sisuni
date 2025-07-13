@@ -16,6 +16,6 @@
     "express": "^5.1.0",
     "mongoose": "^8.16.2",
     "multer": "^2.0.1",
-    "nodemailer": "^6.9.8"
+    "nodemailer": "^6.10.1"
   }
 }
